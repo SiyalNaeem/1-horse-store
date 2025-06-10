@@ -1,0 +1,66 @@
+// Interfaces
+#define function updateHorseNumber(uint256) nonpayable returns()
+#define function readHorseNumber() view returns(uint256)
+
+#define constant NUMBER_OF_HORSES_STORAGE_SLOT = FREE_STORAGE_POINTER() // huff will automatically assign a free storage slot to this constant
+
+#define macro MAIN() = takes(0) returns(0) {
+                                                    //Stack
+    0x00                                            // [0x00] - 0x00 is the first element of the stack
+    calldataload                                    // [calldata(32), 0x00]
+    0xe0                                            // [0xe0 - 224(bits), calldata(32), 0x00]
+    shr                                             // shift right by 224 bits - [function_selector]
+
+    dup1                                            // [function_selector, function_selector]
+
+    //updateHorseNumber(uint256) = 0xcdfead2e
+
+    __FUNC_SIG(updateHorseNumber(uint256))          //0xcdfead2e - [0xcdfead2e, function_selector, function_selector]
+    eq                                              //[true_if_function_selector_matches, function_selector]
+    updatejump                                      // [updateHorseNumberProgramCounter, true_if_function_selector_matches, function_selector]
+    jumpi                                           // [function_selector]
+
+    //readHorseNumber() = 0xe026c017
+
+    __FUNC_SIG(readHorseNumber())                   //0xe026c017 - [0xe026c017, function_selector]
+    eq                                              // [true_if_function_selector_matches]
+    readjump                                        // [readjump, true_if_function_selector_matches]
+    jumpi                                           // []
+
+    0x00                                            // can be used for error message
+    0x00                                            // can be used for error message
+    revert
+
+    updatejump:
+        SET_NUMBER_OF_HORSES()
+    
+    readjump:
+        READ_NUMBER_OF_HORSES()
+
+}
+
+
+#define macro SET_NUMBER_OF_HORSES() = takes(0) returns(0) {
+    //1. get the value to store from calldata
+    0x04                                            // [0x04, function_selector] - 0x04 is the offset of the first argument in calldata
+    calldataload                                    // [value, function_selector]
+    //2. Give it a storage slot
+    [NUMBER_OF_HORSES_STORAGE_SLOT]                 // [storage_slot, value, function_selector]
+    //3. sstore opcode
+    sstore                                          // [value, function_selector] - value is now stored in the storage slot
+    stop                                            // stop execution
+}
+
+#define macro READ_NUMBER_OF_HORSES() = takes(0) returns(0) {
+    //1. get the storage slot
+    [NUMBER_OF_HORSES_STORAGE_SLOT]                 // [storage_slot, function_selector]
+    //2. load the value to the storage slot
+    sload                                           // [value, function_selector]
+    //3. return the value
+    0x00                                            // [0x00, value, function_selector]
+    mstore                                          // Stack: [function_selector] - 0x00 is the offset of the first return value - Memory: [value]
+    0x20                                            // 0x20 - bytes size to copy i.e. how much memory should we allocate in memory in decimals = 32 bytes, - Stack: [0x20, function_selector] - 0x00 is the offset of the first return value - Memory: [value]
+    0x00                                            // 0x00 - bytes offset in memory i.e., after how many bytes should we copy the value - Stack: [0x00, 0x20, function_selector] - 0x00 is the offset of the first return value - Memory: [value]
+    return                                          // return the value - Stack: [function_selector] - Memory: []
+
+}
